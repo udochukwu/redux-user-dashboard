@@ -31,10 +31,6 @@ export function Dashboard() {
     dispatch(fetchUsersAsync());
   }, [dispatch]);
 
-  useEffect(() => {
-    setComputedUsers(users);
-  }, [users]);
-
   const sort = ({ users, _sortBy, _sortOrder }) => {
     return [...users].sort(function (a, b) {
       const textA =
@@ -126,28 +122,33 @@ export function Dashboard() {
           userToRemove={userToRemove}
         />
         <div className='container'>
-          <h1 className='fw-bold mb-5'>Dashboard</h1>
+          <div className='d-flex justify-content-center mb-5'>
+            <img
+              src='https://uploads-ssl.webflow.com/610824d4fcb6d649baba751a/616ef5037713a882f83023ee_Proexe_logo_dark.svg'
+              alt=''
+            />
+          </div>
           <div className='card'>
             <div className='card-header d-flex justify-content-between align-items-center fw-bold'>
               <span>User List</span>{' '}
               <button
                 type='button'
-                className='btn btn-primary btn-sm fw-bold'
+                className='btn btn-outline-secondary btn-sm fw-bold'
                 onClick={() => setShowUserFormModal(true)}
               >
-                Add New
+                Add New User <i className='fas fa-user-plus ms-3'></i>
               </button>
             </div>
             <div className='card-body'>
               {status === 'loading' ? (
-                <div className='d-flex justify-content-center py-5'>
+                <div className='d-flex justify-content-center py-5' data-testid="loading-section">
                   <div className='spinner-border' role='status'>
                     <span className='visually-hidden'>Loading...</span>
                   </div>
                 </div>
-              ) : (
+              ) : computedUsers?.length > 0 ? (
                 <div className='table-responsive'>
-                  <table className='table table-stripe table-bordered align-middle'>
+                  <table className='table table-stripe table-bordered align-middle table-striped'>
                     <thead>
                       <tr>
                         {tableHeaders.map((header, index) => (
@@ -188,39 +189,59 @@ export function Dashboard() {
                     <tbody>
                       {computedUsers?.map((user, index) => (
                         <tr key={user?.id}>
-                          <td>{user?.id}</td>
-                          <td>{user?.name}</td>
-                          <td>{user?.username}</td>
-                          <td>{user?.email}</td>
-                          <td>{user?.address?.city}</td>
+                          <td
+                            className={cx({
+                              active: sortBy === 'id',
+                            })}
+                          >
+                            {user?.id}
+                          </td>
+                          <td className={cx({
+                              active: sortBy === 'name',
+                            })}>{user?.name}</td>
+                          <td className={cx({
+                              active: sortBy === 'username',
+                            })}>{user?.username}</td>
+                          <td className={cx({
+                              active: sortBy === 'email',
+                            })}>{user?.email}</td>
+                          <td className={cx({
+                              active: sortBy === 'city',
+                            })}>{user?.address?.city}</td>
                           <td>
-                            <button
-                              type='button'
-                              className='btn btn-warning btn-sm fw-bold'
+                            <div
                               onClick={() => {
                                 setUserToEdit(user);
                                 setShowEditModal(true);
                               }}
+                              className='cursor-pointer'
                             >
-                              Edit
-                            </button>
+                              <i className='far fa-edit'></i>
+                            </div>
                           </td>
                           <td>
-                            <button
-                              type='button'
-                              className='btn btn-danger btn-sm fw-bold'
+                            <div
                               onClick={() => {
                                 setUserToRemove(user.id);
                                 setShowDeleteModal(true);
                               }}
+                              className='cursor-pointer'
                             >
-                              Delete
-                            </button>
+                              <i className='far fa-trash-alt'></i>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              ) : (
+                <div className='d-flex justify-content-center align-items-center no-data-section py-5 text-center'>
+                  <div>
+                    <h4 className='text-muted'>No User Found</h4>
+                    {/* <button className='btn btn-success btn-sm fw-bold'
+                onClick={() => setShowUserFormModal(true)}>Add User</button> */}
+                  </div>
                 </div>
               )}
             </div>
@@ -234,14 +255,25 @@ export function Dashboard() {
 const StyledDashboard = styled.main`
   width: 100%;
   padding: 100px 0px;
+  .cursor-pointer {
+    cursor: pointer;
+  }
   table {
     border: 1px solid #e9ecef;
-    font-size: 13px;
+    font-size: 14px;
+  }
+  thead {
+    background: #f7f7f7;
   }
   tbody {
     border-top: none !important;
   }
-
+  td,
+  th {
+    &.active {
+      background-color: #f7f7f7;
+    }
+  }
   th {
     padding: 1rem 1rem;
     vertical-align: middle;
@@ -263,6 +295,11 @@ const StyledDashboard = styled.main`
           color: #000000;
         }
       }
+    }
+  }
+  .no-data-section {
+    img {
+      height: 200px;
     }
   }
 `;
