@@ -11,7 +11,6 @@ import {
 import { toast } from 'react-toastify';
 import cx from 'classnames';
 import styled from 'styled-components';
-import { Modal, Button } from 'react-bootstrap';
 import { NewUserModal } from './newUserModal';
 import { EditUserModal } from './editUserModal';
 import { DeleteUserModal } from './deleteUserModal';
