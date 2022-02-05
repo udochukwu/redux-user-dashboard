@@ -8,12 +8,12 @@ import {
   selectUsers,
   selectStatus,
 } from './dashboardSlice';
-import { toast } from 'react-toastify'
-
+import { toast } from 'react-toastify';
+import cx from 'classnames';
 import styled from 'styled-components';
-import { Modal, Button } from 'react-bootstrap';
 import { NewUserModal } from './newUserModal';
 import { EditUserModal } from './editUserModal';
+import { DeleteUserModal } from './deleteUserModal';
 export function Dashboard() {
   const users = useSelector(selectUsers);
   const status = useSelector(selectStatus);
@@ -24,6 +24,9 @@ export function Dashboard() {
   const [computedUsers, setComputedUsers] = useState(users);
   const [userToRemove, setUserToRemove] = useState(null);
   const [userToEdit, setUserToEdit] = useState(null);
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortBy, setSortBy] = useState('id');
+
   useEffect(() => {
     dispatch(fetchUsersAsync());
   }, [dispatch]);
@@ -32,13 +35,41 @@ export function Dashboard() {
     setComputedUsers(users);
   }, [users]);
 
+  const sort = ({ users, _sortBy, _sortOrder }) => {
+    return [...users].sort(function (a, b) {
+      const textA =
+        typeof a[_sortBy] === 'number' ? a[_sortBy] : a[_sortBy]?.toLowerCase();
+      const textB =
+        typeof b[_sortBy] === 'number' ? b[_sortBy] : b[_sortBy]?.toLowerCase();
+
+      if (textA < textB) {
+        return _sortOrder === 'asc' ? -1 : 1;
+      }
+      if (textA > textB) {
+        return _sortOrder === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  useEffect(() => {
+    const sortedUsers = users
+      ? sort({
+          users: users.map((user) => ({ ...user, city: user?.address?.city })),
+          _sortBy: sortBy,
+          _sortOrder: sortOrder,
+        })
+      : null;
+    setComputedUsers(sortedUsers);
+  }, [sortBy, sortOrder, users]);
+
   const createNewUser = (user) => {
     const lastId = users?.slice(-1)[0]?.id || 0;
     dispatch(
       addUser({ id: lastId + 1, address: { city: user?.city }, ...user })
     );
     setShowUserFormModal(false);
-    toast.success('User Created.')
+    toast.success('User Created');
   };
 
   const editUser = (user) => {
@@ -46,9 +77,29 @@ export function Dashboard() {
       updateUser({ id: userToEdit?.id, address: { city: user?.city }, ...user })
     );
     setShowEditModal(false);
-    toast.success('User Updates.')
+    toast.success('User Updated');
   };
 
+  const deleteUser = (user) => {
+    setShowDeleteModal(false);
+    dispatch(removeUser(userToRemove));
+    toast.success('User Deleted');
+  };
+
+  const toggleSortOrder = (_sortBy) => {
+    setSortBy(_sortBy);
+    setSortOrder(sortOrder === 'asc' && _sortBy === sortBy ? 'desc' : 'asc');
+  };
+
+  const tableHeaders = [
+    { name: 'id', sort: true },
+    { name: 'name', sort: true },
+    { name: 'username', sort: true },
+    { name: 'email', sort: true },
+    { name: 'city', sort: true },
+    { name: 'edit', sort: false },
+    { name: 'delete', sort: false },
+  ];
   return (
     <>
       <StyledDashboard>
@@ -60,42 +111,20 @@ export function Dashboard() {
         <EditUserModal
           show={showEditModal}
           handleClose={() => {
-            setShowEditModal(false)
+            setShowEditModal(false);
           }}
           defaultValue={userToEdit}
           submit={editUser}
         />
-        <Modal
+        <DeleteUserModal
           show={showDeleteModal}
-          onHide={() => setShowDeleteModal(false)}
-          centered
-        >
-          <Modal.Header closeButton>
-            <Modal.Title>Delete</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            Are you sure you want to permanently delete this user?{' '}
-            {users?.find((user) => user.id === userToRemove)?.email}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant='secondary'
-              onClick={() => setShowDeleteModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant='danger'
-              onClick={() => {
-                setShowDeleteModal(false);
-                dispatch(removeUser(userToRemove));
-                toast.success('User Deleted.')
-              }}
-            >
-              Delete
-            </Button>
-          </Modal.Footer>
-        </Modal>
+          handleClose={() => {
+            setShowDeleteModal(false);
+          }}
+          users={users}
+          handleDelete={deleteUser}
+          userToRemove={userToRemove}
+        />
         <div className='container'>
           <h1 className='fw-bold mb-5'>Dashboard</h1>
           <div className='card'>
@@ -118,22 +147,48 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className='table-responsive'>
-                  <table className='table table-striped table-bordered align-middle'>
+                  <table className='table table-stripe table-bordered align-middle'>
                     <thead>
                       <tr>
-                        <th scope='col'>id</th>
-                        <th scope='col'>Name</th>
-                        <th scope='col'>Username</th>
-                        <th scope='col'>Email</th>
-                        <th scope='col'>City</th>
-                        <th scope='col'>Edit</th>
-                        <th scope='col'>Delete</th>
+                        {tableHeaders.map((header, index) => (
+                          <th
+                            scope='col'
+                            onClick={() => toggleSortOrder(header.name)}
+                            key={index}
+                          >
+                            <div className='d-flex justify-content-between align-items-center'>
+                              <span>{header.name}</span>
+                              {header.sort && (
+                                <div className='sort-box ms-5'>
+                                  <div className='sort-item'>
+                                    <i
+                                      className={cx('fas fa-caret-up ', {
+                                        active:
+                                          sortOrder === 'asc' &&
+                                          sortBy === header.name,
+                                      })}
+                                    ></i>
+                                  </div>
+                                  <div className='sort-item'>
+                                    <i
+                                      className={cx('fas fa-caret-down ', {
+                                        active:
+                                          sortOrder === 'desc' &&
+                                          sortBy === header.name,
+                                      })}
+                                    ></i>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {computedUsers?.map((user, index) => (
                         <tr key={user?.id}>
-                          <th scope='row'>{user?.id}</th>
+                          <td>{user?.id}</td>
                           <td>{user?.name}</td>
                           <td>{user?.username}</td>
                           <td>{user?.email}</td>
@@ -179,14 +234,35 @@ export function Dashboard() {
 const StyledDashboard = styled.main`
   width: 100%;
   padding: 100px 0px;
+  table {
+    border: 1px solid #e9ecef;
+    font-size: 13px;
+  }
   tbody {
     border-top: none !important;
   }
-  td,
+
   th {
+    padding: 1rem 1rem;
+    vertical-align: middle;
+    cursor: pointer;
+  }
+  td {
     padding: 2rem 1rem;
+    border: none;
   }
   button {
     border-radius: 0px;
+  }
+  .sort-box {
+    .sort-item {
+      cursor: pointer;
+      i {
+        color: #cacaca;
+        &.active {
+          color: #000000;
+        }
+      }
+    }
   }
 `;
